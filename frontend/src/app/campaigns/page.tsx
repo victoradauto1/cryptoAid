@@ -78,8 +78,11 @@ export default function Campaigns() {
     try {
       const campaign = await contract.getCampaign(campaignId);
 
-      const goal = formatEther(campaign.goal);
-      const raised = formatEther(campaign.raisedAmount);
+      const goalValue = campaign.goal || BigInt(0);
+      const raisedValue = campaign.raised || campaign.raisedAmount || BigInt(0);
+
+      const goal = formatEther(goalValue);
+      const raised = formatEther(raisedValue);
       const deadline = Number(campaign.deadline);
 
       const now = Math.floor(Date.now() / 1000);
@@ -87,8 +90,8 @@ export default function Campaigns() {
 
       return {
         id: campaignId,
-        title: campaign.title,
-        description: campaign.description,
+        title: campaign.title || "Untitled Campaign",
+        description: campaign.description || "No description available",
         goal,
         raised,
         deadline,
@@ -121,7 +124,6 @@ export default function Campaigns() {
       const contract = await getReadOnlyContract();
       const total = Number(await contract.campaignCount());
 
-      // Se não houver campanhas, isso NÃO é um erro
       if (total === 0) {
         setCampaigns([]);
         setLoading(false);
@@ -166,7 +168,7 @@ export default function Campaigns() {
   return (
     <main className="min-h-screen bg-[#faf8f6] text-[#3b3b3b]">
       <div className="max-w-4xl mx-auto px-6 py-16">
-        {/* Header - Alinhado com About */}
+        {/* Header */}
         <h1 className="text-4xl font-bold mb-6">
           All <span className="text-[#3f8f7b]">Campaigns</span>
         </h1>
@@ -185,7 +187,9 @@ export default function Campaigns() {
           </div>
         ) : error ? (
           <div className="bg-red-50 border border-red-200 rounded-lg p-6 mt-8">
-            <p className="text-red-600 font-medium mb-2">Error Loading Campaigns</p>
+            <p className="text-red-600 font-medium mb-2">
+              Error Loading Campaigns
+            </p>
             <p className="text-red-500 text-sm">{error}</p>
             <button
               onClick={fetchAllCampaigns}
