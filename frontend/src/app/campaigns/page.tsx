@@ -217,7 +217,7 @@ export default function Campaigns() {
               blockchain.
             </p>
             <a
-              href="/create"
+              href="/createCampaign"
               className="inline-block px-6 py-3 bg-[#3f8f7b] text-white font-medium rounded-lg hover:bg-[#2d7561] transition-colors"
             >
               Create Campaign
