@@ -23,6 +23,7 @@ import { useRouter } from "next/navigation";
 import { useState, useRef } from "react";
 import { parseEther } from "ethers";
 import { useCryptoAid } from "../../context/cryptoAidProvider";
+import { uploadMetadataToPinata } from "../../services/pinataService";
 import ConfirmModal, { WalletIcon } from "../../components/Confirmmodal";
 import ProcessingOverlay from "../../components/Processingoverlay";
 import { FormInput, FormTextarea } from "../../components/Formcomponents";
@@ -207,13 +208,8 @@ export default function CreateCampaign() {
       }
 
       if (campaignId !== undefined && campaignId !== null) {
-        // Save metadata off-chain
         try {
-          const { saveCampaignMetadata } = await import(
-            "@/services/campaignMetadataService"
-          );
-
-          await saveCampaignMetadata({
+          const ipfsUri = await uploadMetadataToPinata({
             campaignId: campaignId.toString(),
             title: title.trim(),
             description: description.trim(),
@@ -223,10 +219,9 @@ export default function CreateCampaign() {
             deadline: Number(deadlineTimestamp),
           });
 
-          console.log("Metadata saved successfully");
+          console.log("Metadata uploaded to IPFS:", ipfsUri);
         } catch (metadataErr) {
           console.error("Failed to save metadata:", metadataErr);
-          // Continue even if metadata save fails
         }
       }
 

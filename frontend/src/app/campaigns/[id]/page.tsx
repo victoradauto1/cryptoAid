@@ -6,10 +6,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { formatEther, parseEther } from "ethers";
 import { getReadOnlyContract } from "@/utils/web3provider";
-import { getCampaignMetadata } from "@/services/campaignMetadataService";
+import { fetchMetadataFromIPFS } from "@/services/pinataService";
 import { useCryptoAid } from "@/context/cryptoAidProvider";
 import DonateModal from "../../../components/Donatemodal";
-import StatusBadge from "../../../components/Statusbadge ";
+import StatusBadge from "../../../components/StatusBadge";
 
 /**
  * Campaign Details Page
@@ -77,7 +77,6 @@ export default function CampaignDetails() {
         const contract = await getReadOnlyContract();
         const onChainData = await contract.getCampaign(Number(campaignId));
 
-        // Fetch metadata
         let metadata = {
           title: onChainData.title || "Untitled Campaign",
           description: onChainData.description || "No description available",
@@ -85,20 +84,9 @@ export default function CampaignDetails() {
           videoUrl: "",
         };
 
-        try {
-          const offChainData = await getCampaignMetadata(campaignId);
-          metadata = {
-            title: offChainData.title || metadata.title,
-            description: offChainData.description || metadata.description,
-            imageUrl: offChainData.imageUrl || "",
-            videoUrl: offChainData.videoUrl || "",
-          };
-        } catch (metaErr) {
-          console.warn("Metadata not found, using on-chain data only");
-        }
-
         const goal = formatEther(onChainData.goal);
-        const raised = formatEther(onChainData.raisedAmount);
+        const raisedValue = onChainData.raised || onChainData.raisedAmount || BigInt(0);
+        const raised = formatEther(raisedValue);
         const deadline = Number(onChainData.deadline);
         const now = Math.floor(Date.now() / 1000);
         const isExpired = now >= deadline;
@@ -176,7 +164,6 @@ export default function CampaignDetails() {
 
       await actions.donate(BigInt(campaign.id), amountWei);
 
-      // Refresh campaign data
       window.location.reload();
     } catch (err: any) {
       console.error("Donation failed:", err);
@@ -226,7 +213,6 @@ export default function CampaignDetails() {
   return (
     <main className="min-h-screen bg-[#faf8f6] text-[#3b3b3b]">
       <div className="max-w-5xl mx-auto px-6 py-16">
-        {/* Back Button */}
         <Link
           href="/campaigns"
           className="inline-flex items-center text-[#6b6b6b] hover:text-[#3b3b3b] mb-6 transition-colors"
@@ -247,15 +233,12 @@ export default function CampaignDetails() {
           Back to Campaigns
         </Link>
 
-        {/* Status Badge */}
         <div className="mb-6">
           <StatusBadge status={campaign.status} size="lg" />
         </div>
 
         <div className="grid md:grid-cols-3 gap-8">
-          {/* Left Column - Image & Video */}
           <div className="md:col-span-2 space-y-6">
-            {/* Campaign Image */}
             <div className="relative w-full h-96 bg-gray-200 rounded-lg overflow-hidden">
               {campaign.imageUrl ? (
                 <Image
@@ -283,7 +266,6 @@ export default function CampaignDetails() {
               )}
             </div>
 
-            {/* Title & Description */}
             <div>
               <h1 className="text-4xl font-bold mb-4">{campaign.title}</h1>
               <p className="text-lg text-[#6b6b6b] leading-relaxed whitespace-pre-wrap">
@@ -291,7 +273,6 @@ export default function CampaignDetails() {
               </p>
             </div>
 
-            {/* Video (if available) */}
             {campaign.videoUrl && (
               <div className="bg-white border border-[#e0e0e0] rounded-lg p-4">
                 <h3 className="font-semibold mb-3">Campaign Video</h3>
@@ -307,9 +288,7 @@ export default function CampaignDetails() {
             )}
           </div>
 
-          {/* Right Column - Funding Info */}
           <div className="space-y-6">
-            {/* Funding Card */}
             <div className="bg-white border border-[#e0e0e0] rounded-lg p-6 sticky top-6">
               <div className="mb-6">
                 <p className="text-3xl font-bold text-[#3b3b3b] mb-1">
@@ -320,7 +299,6 @@ export default function CampaignDetails() {
                 </p>
               </div>
 
-              {/* Progress Bar */}
               <div className="mb-6">
                 <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                   <div
@@ -333,7 +311,6 @@ export default function CampaignDetails() {
                 </p>
               </div>
 
-              {/* Stats */}
               <div className="space-y-3 mb-6 pb-6 border-b border-[#e0e0e0]">
                 <div className="flex justify-between text-sm">
                   <span className="text-[#6b6b6b]">Donors</span>
@@ -347,7 +324,6 @@ export default function CampaignDetails() {
                 </div>
               </div>
 
-              {/* Donate Button */}
               {campaign.isActive ? (
                 <button
                   onClick={handleDonateClick}
@@ -363,7 +339,6 @@ export default function CampaignDetails() {
                 </div>
               )}
 
-              {/* Creator Info */}
               <div className="mt-6 pt-6 border-t border-[#e0e0e0]">
                 <p className="text-xs text-[#9b9b9b] mb-1">Created by</p>
                 <p className="text-xs font-mono text-[#6b6b6b] break-all">
@@ -375,7 +350,6 @@ export default function CampaignDetails() {
         </div>
       </div>
 
-      {/* Donate Modal */}
       <DonateModal
         isOpen={showDonateModal}
         amount={donationAmount}
