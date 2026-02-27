@@ -5,7 +5,7 @@
  * Routes requests through secure API endpoints to protect credentials.
  *
  * Architecture:
- * This service calls /api/pinata/* endpoints instead of Pinata directly.
+ * This service calls /api/* endpoints instead of Pinata directly.
  * JWT remains secure on the server.
  */
 
@@ -38,6 +38,13 @@ interface UploadResponse {
   ipfsUri: string;
 }
 
+interface FetchResponse {
+  success: boolean;
+  ipfsHash: string;
+  ipfsUri: string;
+  metadata: CampaignMetadata;
+}
+
 /* ============================================================
    UPLOAD METADATA
 ============================================================ */
@@ -54,7 +61,7 @@ export async function uploadMetadataToPinata(
   metadata: Omit<CampaignMetadata, "createdAt">
 ): Promise<string> {
   try {
-    const response = await fetch("/api/pinata/upload", {
+    const response = await fetch("/api/upload-metadata", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -76,7 +83,47 @@ export async function uploadMetadataToPinata(
 }
 
 /* ============================================================
-   FETCH METADATA
+   FETCH METADATA BY CAMPAIGN ID
+============================================================ */
+
+/**
+ * fetchMetadataByCampaignId
+ *
+ * Fetches campaign metadata from Pinata by campaignId.
+ * Uses server-side API route to query Pinata safely.
+ *
+ * Returns null if metadata not found (campaign created before Pinata integration).
+ */
+export async function fetchMetadataByCampaignId(
+  campaignId: string
+): Promise<CampaignMetadata | null> {
+  try {
+    const response = await fetch(
+      `/api/fetch-metadata?campaignId=${campaignId}`
+    );
+
+    if (response.status === 404) {
+      return null;
+    }
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.details || error.error || "Fetch failed");
+    }
+
+    const data: FetchResponse = await response.json();
+    return data.metadata;
+  } catch (error: any) {
+    console.error(
+      `Fetch metadata error for campaign ${campaignId}:`,
+      error.message
+    );
+    return null;
+  }
+}
+
+/* ============================================================
+   FETCH METADATA BY IPFS URI
 ============================================================ */
 
 /**
@@ -114,25 +161,24 @@ export async function fetchMetadataFromIPFS(
 /**
  * fetchMetadataBatch
  *
- * Retrieves multiple campaign metadata objects in parallel.
+ * Retrieves multiple campaign metadata objects in parallel by campaignId.
  * Returns a Map with campaignId as key and metadata as value.
- * Failed fetches are logged but do not throw errors.
+ * Failed fetches return null but do not throw errors.
  */
 export async function fetchMetadataBatch(
-  ipfsUris: Map<string, string>
+  campaignIds: string[]
 ): Promise<Map<string, CampaignMetadata>> {
   const results = new Map<string, CampaignMetadata>();
 
   await Promise.allSettled(
-    Array.from(ipfsUris.entries()).map(async ([campaignId, uri]) => {
+    campaignIds.map(async (id) => {
       try {
-        const metadata = await fetchMetadataFromIPFS(uri);
-        results.set(campaignId, metadata);
+        const metadata = await fetchMetadataByCampaignId(id);
+        if (metadata) {
+          results.set(id, metadata);
+        }
       } catch (err) {
-        console.warn(
-          `Failed to fetch metadata for campaign ${campaignId}:`,
-          err
-        );
+        console.warn(`Failed to fetch metadata for campaign ${id}:`, err);
       }
     })
   );
