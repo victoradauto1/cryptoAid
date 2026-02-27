@@ -6,7 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { formatEther, parseEther } from "ethers";
 import { getReadOnlyContract } from "@/utils/web3provider";
-import { fetchMetadataFromIPFS } from "@/services/pinataService";
+import { fetchMetadataByCampaignId } from "@/services/pinataService";
 import { useCryptoAid } from "@/context/cryptoAidProvider";
 import DonateModal from "../../../components/Donatemodal";
 import StatusBadge from "../../../components/StatusBadge";
@@ -84,8 +84,23 @@ export default function CampaignDetails() {
           videoUrl: "",
         };
 
+        try {
+          const offChainData = await fetchMetadataByCampaignId(campaignId);
+          if (offChainData) {
+            metadata = {
+              title: offChainData.title || metadata.title,
+              description: offChainData.description || metadata.description,
+              imageUrl: offChainData.imageUrl || "",
+              videoUrl: offChainData.videoUrl || "",
+            };
+          }
+        } catch (metaErr) {
+          console.warn("Metadata not found, using on-chain data only");
+        }
+
         const goal = formatEther(onChainData.goal);
-        const raisedValue = onChainData.raised || onChainData.raisedAmount || BigInt(0);
+        const raisedValue =
+          onChainData.raised || onChainData.raisedAmount || BigInt(0);
         const raised = formatEther(raisedValue);
         const deadline = Number(onChainData.deadline);
         const now = Math.floor(Date.now() / 1000);
@@ -245,6 +260,7 @@ export default function CampaignDetails() {
                   src={campaign.imageUrl}
                   alt={campaign.title}
                   fill
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 66vw, 800px"
                   className="object-cover"
                 />
               ) : (

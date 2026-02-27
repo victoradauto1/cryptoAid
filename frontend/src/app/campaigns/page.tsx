@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { formatEther } from "ethers";
 import { getReadOnlyContract } from "../../utils/web3provider";
+import { fetchMetadataBatch } from "../../services/pinataService";
 import CampaignCard from "@/components/CampaignCard";
 
 /**
@@ -13,6 +14,7 @@ import CampaignCard from "@/components/CampaignCard";
  * Responsibilities:
  * - Fetch total campaign count from smart contract (read-only)
  * - Retrieve individual campaign data
+ * - Enrich with off-chain metadata from Pinata
  * - Normalize on-chain BigInt values to UI-friendly strings
  * - Reverse order to display most recent campaigns first
  * - Handle loading, error and empty states
@@ -42,6 +44,7 @@ interface CampaignView {
   id: number;
   title: string;
   description: string;
+  imageUrl: string;
   goal: string;
   raised: string;
   deadline: number;
@@ -92,6 +95,7 @@ export default function Campaigns() {
         id: campaignId,
         title: campaign.title || "Untitled Campaign",
         description: campaign.description || "No description available",
+        imageUrl: "",
         goal,
         raised,
         deadline,
@@ -113,6 +117,8 @@ export default function Campaigns() {
    *
    * - Retrieves total campaign count
    * - Executes parallel RPC calls for each campaign
+   * - Fetches metadata from Pinata in batch
+   * - Merges on-chain and off-chain data
    * - Filters failed fetches
    * - Reverses order to show newest first
    */
@@ -136,9 +142,26 @@ export default function Campaigns() {
         requests.push(fetchSingleCampaign(contract, i));
       }
 
-      const results = await Promise.all(requests);
+      const onChainResults = await Promise.all(requests);
+      const validCampaigns = onChainResults.filter(Boolean) as CampaignView[];
 
-      setCampaigns(results.filter(Boolean).reverse() as CampaignView[]);
+      const campaignIds = validCampaigns.map((c) => c.id.toString());
+      const metadataMap = await fetchMetadataBatch(campaignIds);
+
+      const enrichedCampaigns = validCampaigns.map((campaign) => {
+        const metadata = metadataMap.get(campaign.id.toString());
+        if (metadata) {
+          return {
+            ...campaign,
+            title: metadata.title || campaign.title,
+            description: metadata.description || campaign.description,
+            imageUrl: metadata.imageUrl || "",
+          };
+        }
+        return campaign;
+      });
+
+      setCampaigns(enrichedCampaigns.reverse());
     } catch (err: any) {
       console.error("Error fetching campaigns:", err);
       setError(
