@@ -11,6 +11,17 @@ interface CampaignCardProps {
 }
 
 /* ============================================================
+   IMAGE HELPER
+============================================================ */
+
+// Adicione esta função no topo do arquivo
+function getImageSrc(imageUrl: string): string {
+  if (!imageUrl) return "/selfhug.png";
+  if (imageUrl.startsWith("/")) return imageUrl;
+  return `/api/image-proxy?url=${encodeURIComponent(imageUrl)}`;
+}
+
+/* ============================================================
    COMPONENT
 ============================================================ */
 
@@ -28,7 +39,7 @@ interface CampaignCardProps {
  * Pure presentational component.
  */
 export default function CampaignCard({ campaign }: CampaignCardProps) {
-  const { id, title, description, goal, raised, status, isActive } = campaign;
+  const { id, title, description, goal, raised, status, isActive, imageUrl } = campaign;
 
   const progress =
     Number(goal) > 0 ? (Number(raised) / Number(goal)) * 100 : 0;
@@ -53,9 +64,10 @@ export default function CampaignCard({ campaign }: CampaignCardProps) {
       {/* Image */}
       <div className="h-44 relative bg-gray-100">
         <Image
-          src="/selfhug.png"
+          src={getImageSrc(imageUrl)}
           alt={title}
           fill
+          sizes="(max-width: 768px) 100vw, 33vw"
           className="object-cover group-hover:scale-105 transition-transform duration-300"
         />
         

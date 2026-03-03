@@ -2,12 +2,24 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
-    remotePatterns: [
+    /**
+     * Allow:
+     * 1. Internal API proxy route
+     * 2. Any local static image (like /logo.png, /selfhug.png)
+     */
+    localPatterns: [
       {
-        protocol: 'https',
-        hostname: 'images.unsplash.com',
+        pathname: "/api/image-proxy",
+      },
+      {
+        pathname: "/**", // allow all local static files
       },
     ],
+
+    // No need for remotePatterns because all external images go through the proxy
+    remotePatterns: [],
+
+    unoptimized: false,
   },
 };
 

@@ -81,8 +81,11 @@ export async function POST(req: NextRequest) {
         pinataMetadata: {
           name: `campaign-${body.campaignId}`,
           keyvalues: {
+            project: "cryptoaid",
+            entity: "campaign",
             campaignId: body.campaignId,
-            type: "campaign-metadata",
+            environment: process.env.NODE_ENV,
+            version: "v1",
           },
         },
       },

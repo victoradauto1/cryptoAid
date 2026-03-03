@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
           status: "pinned",
           metadata: JSON.stringify({
             keyvalues: {
-              campaignId: { value: campaignId, op: "eq" },
+              campaignId: campaignId,
             },
           }),
         },
@@ -50,15 +50,26 @@ export async function GET(req: NextRequest) {
       }
     );
 
-    if (response.data.count === 0) {
+    if (!response.data.rows || response.data.rows.length === 0) {
       return NextResponse.json(
         { error: "Metadata not found" },
         { status: 404 }
       );
     }
 
-    // Get the first matching file
-    const ipfsHash = response.data.rows[0].ipfs_pin_hash;
+    // Extra safety: manually ensure exact campaignId match
+    const matchingRow = response.data.rows.find((row: any) => {
+      return row.metadata?.keyvalues?.campaignId === campaignId;
+    });
+
+    if (!matchingRow) {
+      return NextResponse.json(
+        { error: "Exact campaign metadata not found" },
+        { status: 404 }
+      );
+    }
+
+    const ipfsHash = matchingRow.ipfs_pin_hash;
 
     // Fetch the actual metadata content
     const metadataResponse = await axios.get(
