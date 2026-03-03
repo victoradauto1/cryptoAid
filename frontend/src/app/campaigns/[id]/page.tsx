@@ -99,8 +99,7 @@ export default function CampaignDetails() {
         }
 
         const goal = formatEther(onChainData.goal);
-        const raisedValue =
-          onChainData.raised || onChainData.raisedAmount || BigInt(0);
+        const raisedValue = onChainData.balance ?? BigInt(0);
         const raised = formatEther(raisedValue);
         const deadline = Number(onChainData.deadline);
         const now = Math.floor(Date.now() / 1000);
@@ -230,8 +229,18 @@ export default function CampaignDetails() {
           href="/campaigns"
           className="inline-flex items-center text-[#6b6b6b] hover:text-[#3b3b3b] mb-6 transition-colors"
         >
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          <svg
+            className="w-5 h-5 mr-2"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
           </svg>
           Back to Campaigns
         </Link>
@@ -241,13 +250,17 @@ export default function CampaignDetails() {
         </div>
 
         <div className="grid md:grid-cols-3 gap-8">
+          {/* ============================================================
+               COLUNA ESQUERDA - Imagem & Descrição
+          ============================================================ */}
           <div className="md:col-span-2 space-y-6">
-
-            {/* ======== IMAGE BLOCK UPDATED ONLY HERE ======== */}
+            {/* Imagem */}
             <div className="relative w-full h-96 bg-gray-200 rounded-lg overflow-hidden">
               {campaign.imageUrl ? (
                 <Image
-                  src={`/api/image-proxy?url=${encodeURIComponent(campaign.imageUrl)}`}
+                  src={`/api/image-proxy?url=${encodeURIComponent(
+                    campaign.imageUrl
+                  )}`}
                   alt={campaign.title}
                   fill
                   sizes="(max-width: 768px) 100vw, 800px"
@@ -272,6 +285,7 @@ export default function CampaignDetails() {
               )}
             </div>
 
+            {/* Título & Descrição */}
             <div>
               <h1 className="text-4xl font-bold mb-4">{campaign.title}</h1>
               <p className="text-lg text-[#6b6b6b] leading-relaxed whitespace-pre-wrap">
@@ -279,6 +293,7 @@ export default function CampaignDetails() {
               </p>
             </div>
 
+            {/* Vídeo (se houver) */}
             {campaign.videoUrl && (
               <div className="bg-white border border-[#e0e0e0] rounded-lg p-4">
                 <h3 className="font-semibold mb-3">Campaign Video</h3>
@@ -294,10 +309,77 @@ export default function CampaignDetails() {
             )}
           </div>
 
-          {/* resto do arquivo permanece idêntico */}
+          {/* ============================================================
+               COLUNA DIREITA - Funding Info & Donate
+          ============================================================ */}
+          <div className="space-y-6">
+            <div className="bg-white border border-[#e0e0e0] rounded-lg p-6 sticky top-6">
+              {/* Quantia Arrecadada */}
+              <div className="mb-6">
+                <p className="text-3xl font-bold text-[#3b3b3b] mb-1">
+                  {campaign.raised} ETH
+                </p>
+                <p className="text-sm text-[#6b6b6b]">
+                  raised of {campaign.goal} ETH goal
+                </p>
+              </div>
+
+              {/* Progress Bar */}
+              <div className="mb-6">
+                <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                  <div
+                    className="bg-[#3f8f7b] h-full transition-all"
+                    style={{ width: `${campaign.progress}%` }}
+                  />
+                </div>
+                <p className="text-xs text-[#9b9b9b] mt-2">
+                  {campaign.progress.toFixed(1)}% funded
+                </p>
+              </div>
+
+              {/* Stats: Donors & Deadline */}
+              <div className="space-y-3 mb-6 pb-6 border-b border-[#e0e0e0]">
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#6b6b6b]">Donors</span>
+                  <span className="font-semibold">{campaign.donorCount}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#6b6b6b]">Deadline</span>
+                  <span className="font-semibold">
+                    {new Date(campaign.deadline * 1000).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+
+              {/* Botão de Doação */}
+              {campaign.isActive ? (
+                <button
+                  onClick={handleDonateClick}
+                  className="w-full bg-[#3f8f7b] hover:bg-[#2d7561] text-white font-semibold py-3 rounded-lg transition-colors"
+                >
+                  {isReady ? "Donate Now" : "Connect to Donate"}
+                </button>
+              ) : (
+                <div className="text-center text-[#6b6b6b] text-sm">
+                  {campaign.status === "SUCCESSFUL"
+                    ? "Campaign goal reached!"
+                    : "Campaign has ended"}
+                </div>
+              )}
+
+              {/* Informação do Criador */}
+              <div className="mt-6 pt-6 border-t border-[#e0e0e0]">
+                <p className="text-xs text-[#9b9b9b] mb-1">Created by</p>
+                <p className="text-xs font-mono text-[#6b6b6b] break-all">
+                  {campaign.creator}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
+      {/* Modal de Doação */}
       <DonateModal
         isOpen={showDonateModal}
         amount={donationAmount}
