@@ -5,6 +5,7 @@ import { formatEther } from "ethers";
 import { getReadOnlyContract } from "../../utils/web3provider";
 import { fetchMetadataBatch } from "../../services/pinataService";
 import CampaignCard from "@/components/CampaignCard";
+import Link from "next/link";
 
 /**
  * Campaigns Page
@@ -243,19 +244,68 @@ export default function Campaigns() {
               Be the first to create a campaign and start fundraising on the
               blockchain.
             </p>
-            <a
+            <Link
               href="/createCampaign"
               className="inline-block px-6 py-3 bg-[#3f8f7b] text-white font-medium rounded-lg hover:bg-[#2d7561] transition-colors"
             >
               Create Campaign
-            </a>
+            </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-10">
-            {campaigns.map((campaign) => (
-              <CampaignCard key={campaign.id} campaign={campaign} />
-            ))}
-          </div>
+          <>
+            {/* Grid de Campanhas */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-10">
+              {campaigns.map((campaign) => (
+                <CampaignCard key={campaign.id} campaign={campaign} />
+              ))}
+            </div>
+
+            {/* CTA Discreto para Criar Campanha */}
+            <div className="mt-16 pt-8 border-t border-[#e0e0e0]">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-linear-to-r from-[#f0f7f5] to-[#faf8f6] rounded-xl p-6 border border-[#3f8f7b]/20">
+                <div className="flex-1 text-center sm:text-left">
+                  <h3 className="text-lg font-semibold text-[#3b3b3b] mb-1">
+                    Have a cause worth supporting?
+                  </h3>
+                  <p className="text-sm text-[#6b6b6b]">
+                    Create your own campaign and start raising funds on the blockchain.
+                  </p>
+                </div>
+                <Link
+                  href="/createCampaign"
+                  className="
+                    inline-flex items-center gap-2
+                    px-6 py-3
+                    bg-[#3f8f7b] 
+                    text-white 
+                    font-semibold 
+                    rounded-lg 
+                    hover:bg-[#2d7561]
+                    transition-all
+                    duration-200
+                    shadow-sm
+                    hover:shadow-md
+                    whitespace-nowrap
+                  "
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 4v16m8-8H4"
+                    />
+                  </svg>
+                  Create Campaign
+                </Link>
+              </div>
+            </div>
+          </>
         )}
       </div>
     </main>
