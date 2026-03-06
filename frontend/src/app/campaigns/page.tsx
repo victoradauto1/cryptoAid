@@ -10,37 +10,12 @@ import Link from "next/link";
 /**
  * Campaigns Page
  *
- * Displays all crowdfunding campaigns stored on-chain.
- *
- * Responsibilities:
- * - Fetch total campaign count from smart contract (read-only)
- * - Retrieve individual campaign data
- * - Enrich with off-chain metadata from Pinata
- * - Normalize on-chain BigInt values to UI-friendly strings
- * - Reverse order to display most recent campaigns first
- * - Handle loading, error and empty states
- *
- * Architectural Decision:
- * This page is intentionally READ-ONLY and must NOT depend
- * on CryptoAidProvider (wallet context).
- *
- * Public blockchain reads should remain decoupled from
- * authenticated wallet state to ensure:
- * - Public accessibility
- * - Better UX (no wallet required)
- * - Clear separation of concerns
+ * ALIGNED WITH CONTRACT:
+ * - Uses campaign.balance (not "raised")
+ * - Uses campaign.status enum (0=ACTIVE, 1=COMPLETED, 2=CANCELLED)
+ * - For completed campaigns, shows goal as "raised" (since balance is 0)
  */
 
-/* ============================================================
-   TYPES
-============================================================ */
-
-/**
- * CampaignView
- *
- * Represents a normalized UI-friendly campaign model.
- * Converts on-chain BigInt values into formatted strings.
- */
 interface CampaignView {
   id: number;
   title: string;
@@ -50,58 +25,57 @@ interface CampaignView {
   raised: string;
   deadline: number;
   isActive: boolean;
-  status: "ACTIVE" | "ENDED";
+  status: "ACTIVE" | "ENDED" | "SUCCESSFUL";
 }
-
-/* ============================================================
-   COMPONENT
-============================================================ */
 
 export default function Campaigns() {
   const [campaigns, setCampaigns] = useState<CampaignView[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  /* ============================================================
-     Fetch Single Campaign
-  ============================================================ */
-
-  /**
-   * fetchSingleCampaign
-   *
-   * Retrieves a single campaign from the contract and
-   * transforms raw blockchain data into a UI model.
-   *
-   * - Converts wei to ETH using formatEther
-   * - Computes expiration status locally
-   */
   const fetchSingleCampaign = async (
     contract: any,
     campaignId: number
   ): Promise<CampaignView | null> => {
     try {
-      const campaign = await contract.getCampaign(campaignId);
+      const c = await contract.getCampaign(campaignId);
 
-      const goalValue = campaign.goal || BigInt(0);
-      const raisedValue = campaign.raised || campaign.raisedAmount || BigInt(0);
-
-      const goal = formatEther(goalValue);
-      const raised = formatEther(raisedValue);
-      const deadline = Number(campaign.deadline);
+      const goal = formatEther(c.goal || BigInt(0));
+      const balanceValue = c.balance || BigInt(0);
+      const deadline = Number(c.deadline || 0);
+      const contractStatus = Number(c.status); // 0=ACTIVE, 1=COMPLETED, 2=CANCELLED
 
       const now = Math.floor(Date.now() / 1000);
-      const isExpired = now >= deadline;
+      const isExpired = deadline > 0 && now >= deadline;
+
+      // For completed campaigns, show goal as raised (balance was zeroed after withdrawal)
+      let raised: string;
+      let status: "ACTIVE" | "ENDED" | "SUCCESSFUL";
+
+      if (contractStatus === 1) {
+        // COMPLETED - goal was reached, funds withdrawn
+        raised = goal; // Show full goal as raised
+        status = "SUCCESSFUL";
+      } else if (contractStatus === 2) {
+        // CANCELLED
+        raised = formatEther(balanceValue);
+        status = "ENDED";
+      } else {
+        // ACTIVE
+        raised = formatEther(balanceValue);
+        status = isExpired ? "ENDED" : "ACTIVE";
+      }
 
       return {
         id: campaignId,
-        title: campaign.title || "Untitled Campaign",
-        description: campaign.description || "No description available",
+        title: c.title || "Untitled Campaign",
+        description: c.description || "No description",
         imageUrl: "",
         goal,
         raised,
         deadline,
-        isActive: !isExpired,
-        status: isExpired ? "ENDED" : "ACTIVE",
+        isActive: contractStatus === 0 && !isExpired,
+        status,
       };
     } catch (err) {
       console.error(`Error fetching campaign ${campaignId}:`, err);
@@ -109,20 +83,6 @@ export default function Campaigns() {
     }
   };
 
-  /* ============================================================
-     Fetch All Campaigns
-  ============================================================ */
-
-  /**
-   * fetchAllCampaigns
-   *
-   * - Retrieves total campaign count
-   * - Executes parallel RPC calls for each campaign
-   * - Fetches metadata from Pinata in batch
-   * - Merges on-chain and off-chain data
-   * - Filters failed fetches
-   * - Reverses order to show newest first
-   */
   const fetchAllCampaigns = useCallback(async () => {
     try {
       setLoading(true);
@@ -137,8 +97,7 @@ export default function Campaigns() {
         return;
       }
 
-      const requests: Promise<CampaignView | null>[] = [];
-
+      const requests = [];
       for (let i = 0; i < total; i++) {
         requests.push(fetchSingleCampaign(contract, i));
       }
@@ -146,6 +105,7 @@ export default function Campaigns() {
       const onChainResults = await Promise.all(requests);
       const validCampaigns = onChainResults.filter(Boolean) as CampaignView[];
 
+      // Fetch metadata from Pinata
       const campaignIds = validCampaigns.map((c) => c.id.toString());
       const metadataMap = await fetchMetadataBatch(campaignIds);
 
@@ -165,34 +125,19 @@ export default function Campaigns() {
       setCampaigns(enrichedCampaigns.reverse());
     } catch (err: any) {
       console.error("Error fetching campaigns:", err);
-      setError(
-        err?.message || "Failed to load campaigns. Please try again later."
-      );
+      setError(err?.message || "Failed to load campaigns");
     } finally {
       setLoading(false);
     }
   }, []);
 
-  /* ============================================================
-     Lifecycle
-  ============================================================ */
-
-  /**
-   * On mount:
-   * Fetch campaigns once.
-   */
   useEffect(() => {
     fetchAllCampaigns();
   }, [fetchAllCampaigns]);
 
-  /* ============================================================
-     RENDER
-  ============================================================ */
-
   return (
     <main className="min-h-screen bg-[#faf8f6] text-[#3b3b3b]">
       <div className="max-w-4xl mx-auto px-6 py-16">
-        {/* Header */}
         <h1 className="text-4xl font-bold mb-6">
           All <span className="text-[#3f8f7b]">Campaigns</span>
         </h1>
@@ -203,7 +148,6 @@ export default function Campaigns() {
           ensuring full visibility of funds and progress.
         </p>
 
-        {/* States */}
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20">
             <div className="w-12 h-12 border-4 border-[#3f8f7b] border-t-transparent rounded-full animate-spin mb-4" />
@@ -211,9 +155,7 @@ export default function Campaigns() {
           </div>
         ) : error ? (
           <div className="bg-red-50 border border-red-200 rounded-lg p-6 mt-8">
-            <p className="text-red-600 font-medium mb-2">
-              Error Loading Campaigns
-            </p>
+            <p className="text-red-600 font-medium mb-2">Error Loading Campaigns</p>
             <p className="text-red-500 text-sm">{error}</p>
             <button
               onClick={fetchAllCampaigns}
@@ -224,43 +166,25 @@ export default function Campaigns() {
           </div>
         ) : campaigns.length === 0 ? (
           <div className="bg-[#f0f0f0] border border-[#d0d0d0] rounded-lg p-8 mt-8 text-center">
-            <svg
-              className="w-16 h-16 mx-auto mb-4 text-[#9b9b9b]"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
-              />
+            <svg className="w-16 h-16 mx-auto mb-4 text-[#9b9b9b]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
             </svg>
-            <h3 className="text-xl font-semibold mb-2 text-[#3b3b3b]">
-              No Campaigns Yet
-            </h3>
+            <h3 className="text-xl font-semibold mb-2 text-[#3b3b3b]">No Campaigns Yet</h3>
             <p className="text-[#6b6b6b] mb-6">
-              Be the first to create a campaign and start fundraising on the
-              blockchain.
+              Be the first to create a campaign and start fundraising on the blockchain.
             </p>
-            <Link
-              href="/createCampaign"
-              className="inline-block px-6 py-3 bg-[#3f8f7b] text-white font-medium rounded-lg hover:bg-[#2d7561] transition-colors"
-            >
+            <Link href="/createCampaign" className="inline-block px-6 py-3 bg-[#3f8f7b] text-white font-medium rounded-lg hover:bg-[#2d7561] transition-colors">
               Create Campaign
             </Link>
           </div>
         ) : (
           <>
-            {/* Grid de Campanhas */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-10">
               {campaigns.map((campaign) => (
                 <CampaignCard key={campaign.id} campaign={campaign} />
               ))}
             </div>
 
-            {/* CTA Discreto para Criar Campanha */}
             <div className="mt-16 pt-8 border-t border-[#e0e0e0]">
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-linear-to-r from-[#f0f7f5] to-[#faf8f6] rounded-xl p-6 border border-[#3f8f7b]/20">
                 <div className="flex-1 text-center sm:text-left">
@@ -273,33 +197,10 @@ export default function Campaigns() {
                 </div>
                 <Link
                   href="/createCampaign"
-                  className="
-                    inline-flex items-center gap-2
-                    px-6 py-3
-                    bg-[#3f8f7b] 
-                    text-white 
-                    font-semibold 
-                    rounded-lg 
-                    hover:bg-[#2d7561]
-                    transition-all
-                    duration-200
-                    shadow-sm
-                    hover:shadow-md
-                    whitespace-nowrap
-                  "
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-[#3f8f7b] text-white font-semibold rounded-lg hover:bg-[#2d7561] transition-all duration-200 shadow-sm hover:shadow-md whitespace-nowrap"
                 >
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 4v16m8-8H4"
-                    />
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
                   Create Campaign
                 </Link>

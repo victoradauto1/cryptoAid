@@ -34,6 +34,9 @@ A blockchain-powered fundraising platform built on Ethereum, enabling transparen
 - 🖼️ **Image Proxy** - Secure external image loading with validation
 - 📱 **Responsive Design** - Mobile-first UI with Tailwind CSS
 
+### Frontend Business Rules
+> **Note**: While the smart contract allows campaigns without deadlines (`deadline = 0`), the frontend **requires a deadline** for all campaigns. This design decision prevents abandoned campaigns from remaining active indefinitely, ensuring a better user experience and platform hygiene.
+
 ### Technical Highlights
 - ⛓️ **Dual Data Layer** - On-chain transactions + off-chain metadata
 - 🔒 **Security First** - ReentrancyGuard, input validation, HTTPS-only images

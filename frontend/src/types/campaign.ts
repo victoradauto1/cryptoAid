@@ -1,7 +1,11 @@
 /**
  * Campaign Types
  *
- * Type definitions for campaign data structures used throughout the application.
+ * Type definitions for campaign data structures.
+ * ALIGNED WITH CONTRACT STATUS ENUM:
+ * - 0 = ACTIVE
+ * - 1 = COMPLETED (we show as SUCCESSFUL)
+ * - 2 = CANCELLED (we show as ENDED)
  */
 
 /**
@@ -19,5 +23,5 @@ export interface CampaignView {
   raised: string;
   deadline: number;
   isActive: boolean;
-  status: "ACTIVE" | "ENDED";
+  status: "ACTIVE" | "ENDED" | "SUCCESSFUL";
 }
