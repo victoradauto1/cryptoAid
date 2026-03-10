@@ -23,6 +23,28 @@ import StatusBadge from "../../../components/StatusBadge";
  * - Status-based UI (ACTIVE/ENDED/SUCCESSFUL)
  */
 
+/* ============================================================
+   IMAGE HELPER
+============================================================ */
+
+/**
+ * getImageSrc
+ * 
+ * Processes image URLs for Next.js Image component:
+ * - Empty/null → fallback (/selfhug.png)
+ * - Local path (starts with /) → use as-is
+ * - External URL → route through image proxy
+ */
+function getImageSrc(imageUrl: string): string {
+  if (!imageUrl) return "/selfhug.png";
+  if (imageUrl.startsWith("/")) return imageUrl;
+  return `/api/image-proxy?url=${encodeURIComponent(imageUrl)}`;
+}
+
+/* ============================================================
+   TYPES
+============================================================ */
+
 interface CampaignData {
   id: number;
   creator: string;
@@ -311,7 +333,7 @@ export default function CampaignDetails() {
           <div className="md:col-span-2 space-y-6">
             <div className="relative w-full h-96 bg-gray-200 rounded-lg overflow-hidden">
               <Image
-                src={campaign.imageUrl || "/selfhug.png"}
+                src={getImageSrc(campaign.imageUrl)}
                 alt={campaign.title}
                 fill
                 sizes="(max-width: 768px) 100vw, 800px"
