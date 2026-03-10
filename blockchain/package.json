@@ -6,7 +6,8 @@
     "test": "npx hardhat test",
     "coverage": "npx hardhat coverage",
     "compile": "npx hardhat compile",
-    "deploy": "npx hardhat ignition deploy ignition/modules/CryptoAid.ts --network sepolia"
+    "deploy": "npx hardhat ignition deploy ignition/modules/CryptoAid.ts --network sepolia",
+    "deploy-ignition": "npx hardhat ignition deploy ignition/modules/CryptoAid.ts --network sepolia --reset"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-ignition-ethers": "^0.15.17",
