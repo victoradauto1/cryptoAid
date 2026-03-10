@@ -3,19 +3,13 @@
 /**
  * CreateCampaign
  *
- * Responsibilities:
- * - Collect campaign metadata (title, description, video, image)
- * - Enforce mandatory goal (ETH) and deadline (timestamp)
- * - Create campaign on-chain with all data in a single transaction
- * - Handle wallet connection flow
- *
- * Business Rules:
- * - Campaign succeeds when EITHER:
- *   1. Goal amount is reached, OR
- *   2. Deadline is reached (time-based goal)
- * - Both goal and deadline are mandatory
- * - Goal must be > 0 ETH
- * - Deadline must be in the future
+ * Form validation rules:
+ * - Title: 5-100 characters
+ * - Description: 20-2000 characters
+ * - Image URL: max 500 characters
+ * - Video URL: max 500 characters
+ * - Goal: > 0 ETH
+ * - Deadline: future date required
  */
 
 import Link from "next/link";
@@ -28,12 +22,36 @@ import ConfirmModal, { WalletIcon } from "../../components/Confirmmodal";
 import ProcessingOverlay from "../../components/Processingoverlay";
 import { FormInput, FormTextarea } from "../../components/Formcomponents";
 
+/* ============================================================
+   VALIDATION CONSTANTS
+============================================================ */
+
+const VALIDATION_RULES = {
+  title: {
+    min: 5,
+    max: 100,
+    label: "Title",
+  },
+  description: {
+    min: 20,
+    max: 2000,
+    label: "Description",
+  },
+  imageUrl: {
+    max: 500,
+    label: "Image URL",
+  },
+  videoUrl: {
+    max: 500,
+    label: "Video URL",
+  },
+} as const;
+
 export default function CreateCampaign() {
   const router = useRouter();
   const { actions, isReady, connectWallet, account } = useCryptoAid();
   const isExecutingRef = useRef(false);
 
-  // Form fields
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
@@ -41,15 +59,31 @@ export default function CreateCampaign() {
   const [goal, setGoal] = useState("");
   const [deadline, setDeadline] = useState("");
 
-  // UI states
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [walletMissing, setWalletMissing] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
   /* ============================================================
-     VALIDATION
+     VALIDATION HELPERS
   ============================================================ */
+
+  const validateField = (
+    value: string,
+    rules: { min?: number; max: number; label: string }
+  ): string | null => {
+    const length = value.trim().length;
+
+    if (rules.min && length > 0 && length < rules.min) {
+      return `${rules.label} must be at least ${rules.min} characters.`;
+    }
+
+    if (length > rules.max) {
+      return `${rules.label} cannot exceed ${rules.max} characters.`;
+    }
+
+    return null;
+  };
 
   const validateGoal = () => {
     if (!goal || goal.trim() === "") {
@@ -85,6 +119,38 @@ export default function CreateCampaign() {
   };
 
   /* ============================================================
+     CHARACTER COUNTER COMPONENT
+  ============================================================ */
+
+  const CharCounter = ({
+    current,
+    max,
+    min,
+  }: {
+    current: number;
+    max: number;
+    min?: number;
+  }) => {
+    const isOverLimit = current > max;
+    const isUnderMin = min && current > 0 && current < min;
+
+    return (
+      <div
+        className={`text-xs mt-1 ${
+          isOverLimit
+            ? "text-red-600"
+            : isUnderMin
+            ? "text-amber-600"
+            : "text-[#9b9b9b]"
+        }`}
+      >
+        {current}/{max}
+        {min && current > 0 && current < min && ` (min: ${min})`}
+      </div>
+    );
+  };
+
+  /* ============================================================
      FORM HANDLERS
   ============================================================ */
 
@@ -103,9 +169,39 @@ export default function CreateCampaign() {
     setErrorMessage("");
 
     // Validate title
+    const titleError = validateField(title, VALIDATION_RULES.title);
+    if (titleError) {
+      setErrorMessage(titleError);
+      return;
+    }
+
     if (!title.trim()) {
       setErrorMessage("Title is required.");
       return;
+    }
+
+    // Validate description
+    const descError = validateField(description, VALIDATION_RULES.description);
+    if (descError) {
+      setErrorMessage(descError);
+      return;
+    }
+
+    // Validate URLs (only max length, they're optional)
+    if (imageUrl) {
+      const imgError = validateField(imageUrl, VALIDATION_RULES.imageUrl);
+      if (imgError) {
+        setErrorMessage(imgError);
+        return;
+      }
+    }
+
+    if (videoUrl) {
+      const vidError = validateField(videoUrl, VALIDATION_RULES.videoUrl);
+      if (vidError) {
+        setErrorMessage(vidError);
+        return;
+      }
     }
 
     // Validate goal
@@ -124,7 +220,6 @@ export default function CreateCampaign() {
       return;
     }
 
-    // Check wallet connection
     if (!isReady || !actions) {
       setWalletMissing(true);
       setShowConfirmModal(true);
@@ -142,7 +237,6 @@ export default function CreateCampaign() {
   const executeCreateCampaign = async () => {
     if (isExecutingRef.current) return;
 
-    // If wallet is missing, connect first
     if (walletMissing) {
       setShowConfirmModal(false);
       setIsProcessing(true);
@@ -160,7 +254,6 @@ export default function CreateCampaign() {
       return;
     }
 
-    // Validate again before execution
     let goalWei: bigint;
     let deadlineTimestamp: bigint;
 
@@ -189,7 +282,6 @@ export default function CreateCampaign() {
 
       console.log("Campaign created successfully:", receipt);
 
-      // Extract campaignId from event logs
       let campaignId: bigint | undefined;
 
       try {
@@ -246,7 +338,6 @@ export default function CreateCampaign() {
   return (
     <main className="min-h-screen bg-[#faf8f6] text-[#3b3b3b]">
       <div className="max-w-2xl mx-auto px-6 py-16">
-        {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-4xl font-bold">
             Create <span className="text-[#3f8f7b]">Campaign</span>
@@ -265,16 +356,13 @@ export default function CreateCampaign() {
           limit is reached.
         </p>
 
-        {/* Form Card */}
         <div className="bg-white border border-[#e0e0e0] rounded-lg p-8 shadow-sm">
-          {/* Error Message */}
           {errorMessage && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-sm text-red-600 font-medium">{errorMessage}</p>
             </div>
           )}
 
-          {/* Connected Wallet Info */}
           {account && (
             <div className="mb-6 p-3 bg-[#f0f7f5] border border-[#3f8f7b]/20 rounded-lg">
               <p className="text-xs text-[#6b6b6b]">
@@ -285,43 +373,82 @@ export default function CreateCampaign() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Title */}
-            <FormInput
-              label="Campaign Title"
-              value={title}
-              onChange={setTitle}
-              placeholder="e.g., Help Build a Community Center"
-              required
-              helpText="A clear, descriptive title for your campaign"
-            />
+            {/* Title with counter */}
+            <div>
+              <FormInput
+                label="Campaign Title"
+                value={title}
+                onChange={(val) =>
+                  val.length <= VALIDATION_RULES.title.max && setTitle(val)
+                }
+                placeholder="e.g., Help Build a Community Center"
+                required
+                helpText="A clear, concise title (5-100 characters)"
+              />
+              <CharCounter
+                current={title.length}
+                max={VALIDATION_RULES.title.max}
+                min={VALIDATION_RULES.title.min}
+              />
+            </div>
 
-            {/* Description */}
-            <FormTextarea
-              label="Description"
-              value={description}
-              onChange={setDescription}
-              placeholder="Tell your story and explain what you're raising funds for..."
-              rows={5}
-              helpText="Explain your cause and how funds will be used"
-            />
+            {/* Description with counter */}
+            <div>
+              <FormTextarea
+                label="Description"
+                value={description}
+                onChange={(val) =>
+                  val.length <= VALIDATION_RULES.description.max &&
+                  setDescription(val)
+                }
+                placeholder="Tell your story and explain what you're raising funds for..."
+                rows={5}
+                helpText="Detailed explanation of your cause (20-2000 characters)"
+              />
+              <CharCounter
+                current={description.length}
+                max={VALIDATION_RULES.description.max}
+                min={VALIDATION_RULES.description.min}
+              />
+            </div>
 
-            {/* Image URL */}
-            <FormInput
-              label="Image URL"
-              value={imageUrl}
-              onChange={setImageUrl}
-              placeholder="https://example.com/campaign-image.jpg"
-              helpText="A cover image for your campaign (optional)"
-            />
+            {/* Image URL with counter */}
+            <div>
+              <FormInput
+                label="Image URL"
+                value={imageUrl}
+                onChange={(val) =>
+                  val.length <= VALIDATION_RULES.imageUrl.max && setImageUrl(val)
+                }
+                placeholder="https://example.com/campaign-image.jpg"
+                helpText="A cover image for your campaign (optional)"
+              />
+              {imageUrl && (
+                <CharCounter
+                  current={imageUrl.length}
+                  max={VALIDATION_RULES.imageUrl.max}
+                />
+              )}
+            </div>
 
-            {/* Video URL */}
-            <FormInput
-              label="Video URL"
-              value={videoUrl}
-              onChange={setVideoUrl}
-              placeholder="https://youtube.com/watch?v=..."
-              helpText="A video explaining your campaign (optional)"
-            />
+            {/* Video URL with counter */}
+            <div>
+              <FormInput
+                label="Video URL"
+                value={videoUrl}
+                onChange={(val) =>
+                  val.length <= VALIDATION_RULES.videoUrl.max && setVideoUrl(val)
+                }
+                placeholder="https://youtube.com/watch?v=..."
+                helpText="A video explaining your campaign (optional)"
+              />
+              {videoUrl && (
+                <CharCounter
+                  current={videoUrl.length}
+                  max={VALIDATION_RULES.videoUrl.max}
+                />
+              )}
+            </div>
 
             {/* Goal */}
             <FormInput
@@ -346,7 +473,6 @@ export default function CreateCampaign() {
               helpText="Campaign ends when goal is reached OR deadline passes"
             />
 
-            {/* Submit Button */}
             <button
               type="submit"
               disabled={isProcessing}
@@ -363,7 +489,6 @@ export default function CreateCampaign() {
         </div>
       </div>
 
-      {/* Confirmation Modal */}
       <ConfirmModal
         isOpen={showConfirmModal}
         title={walletMissing ? "Connect Wallet" : "Confirm Campaign Creation"}
@@ -402,7 +527,6 @@ export default function CreateCampaign() {
         )}
       </ConfirmModal>
 
-      {/* Processing Overlay */}
       <ProcessingOverlay isOpen={isProcessing} />
     </main>
   );
