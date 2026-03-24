@@ -342,7 +342,7 @@ export default function CampaignDetails() {
             </div>
 
             <div>
-              <h1 className="text-4xl font-bold mb-4">{campaign.title}</h1>
+              <h1 className="text-3xl md:text-4xl font-bold mb-4">{campaign.title}</h1>
               <p className="text-lg text-[#6b6b6b] leading-relaxed whitespace-pre-wrap">
                 {campaign.description}
               </p>
@@ -425,7 +425,7 @@ export default function CampaignDetails() {
           <div className="space-y-6">
             <div className="bg-white border border-[#e0e0e0] rounded-lg p-6 sticky top-6">
               <div className="mb-6">
-                <p className="text-3xl font-bold text-[#3b3b3b] mb-1">
+                <p className="text-2xl md:text-3xl font-bold text-[#3b3b3b] mb-1">
                   {campaign.raised} ETH
                 </p>
                 <p className="text-sm text-[#6b6b6b]">

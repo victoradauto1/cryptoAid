@@ -138,7 +138,7 @@ export default function Campaigns() {
   return (
     <main className="min-h-screen bg-[#faf8f6] text-[#3b3b3b]">
       <div className="max-w-4xl mx-auto px-6 py-16">
-        <h1 className="text-4xl font-bold mb-6">
+        <h1 className="text-3xl sm:text-4xl font-bold mb-6">
           All <span className="text-[#3f8f7b]">Campaigns</span>
         </h1>
 

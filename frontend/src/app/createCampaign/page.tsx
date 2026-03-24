@@ -339,7 +339,7 @@ export default function CreateCampaign() {
     <main className="min-h-screen bg-[#faf8f6] text-[#3b3b3b]">
       <div className="max-w-2xl mx-auto px-6 py-16">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-4xl font-bold">
+          <h1 className="text-3xl sm:text-4xl font-bold">
             Create <span className="text-[#3f8f7b]">Campaign</span>
           </h1>
           <Link

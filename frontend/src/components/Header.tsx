@@ -17,6 +17,7 @@ export default function Header() {
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [showConnectModal, setShowConnectModal] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Scroll behavior
@@ -118,15 +119,20 @@ export default function Header() {
             </Link>
           </nav>
 
-          {/* Wallet */}
-          <div className="shrink-0">
+          {/* Wallet & Mobile Toggle */}
+          <div className="flex items-center gap-3 shrink-0">
             {account ? (
               <div className="relative" ref={menuRef}>
                 <button
                   onClick={() => setMenuOpen((s) => !s)}
-                  className="px-5 py-2 rounded-full text-sm font-semibold transition-all duration-300 bg-violet-100 text-violet-700 border border-violet-200 hover:bg-violet-200 cursor-pointer"
+                  className="px-4 py-2 sm:px-5 rounded-full text-sm font-semibold transition-all duration-300 bg-violet-100 text-violet-700 border border-violet-200 hover:bg-violet-200 cursor-pointer"
                 >
-                  {account.slice(0, 6)}...{account.slice(-4)}
+                  <span className="hidden sm:inline">
+                    {account.slice(0, 6)}...{account.slice(-4)}
+                  </span>
+                  <span className="sm:hidden">
+                    {account.slice(0, 4)}...
+                  </span>
                 </button>
 
                 {menuOpen && (
@@ -157,13 +163,57 @@ export default function Header() {
               <button
                 onClick={handleConnectClick}
                 disabled={isConnecting}
-                className="px-5 py-2 rounded-full text-sm font-semibold transition-all duration-300 bg-violet-100 text-violet-700 border border-violet-200 hover:bg-violet-200 cursor-pointer disabled:opacity-50"
+                className="px-4 py-2 sm:px-5 rounded-full text-sm font-semibold transition-all duration-300 bg-violet-100 text-violet-700 border border-violet-200 hover:bg-violet-200 cursor-pointer disabled:opacity-50"
               >
-                {isConnecting ? "Connecting..." : "Connect Wallet"}
+                {isConnecting ? "..." : "Connect"}
               </button>
             )}
+
+            {/* Mobile Menu Toggle */}
+            <button
+              className="md:hidden p-2 text-[#3b3b3b] hover:bg-gray-100 rounded-lg transition-colors"
+              onClick={() => setMobileMenuOpen((open) => !open)}
+              aria-label="Toggle Menu"
+            >
+              {mobileMenuOpen ? (
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              ) : (
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              )}
+            </button>
           </div>
         </div>
+
+        {/* Mobile Dropdown Menu */}
+        {mobileMenuOpen && (
+          <div className="md:hidden absolute top-full left-0 w-full bg-white/95 backdrop-blur-md border-b border-black/5 shadow-lg flex flex-col py-4 px-6 space-y-4">
+            <Link
+              href="/campaigns"
+              onClick={() => setMobileMenuOpen(false)}
+              className="text-lg font-medium text-[#3b3b3b] hover:text-[#3f8f7b] transition-colors"
+            >
+              Campaigns
+            </Link>
+            <Link
+              href="/howItWorks"
+              onClick={() => setMobileMenuOpen(false)}
+              className="text-lg font-medium text-[#3b3b3b] hover:text-[#3f8f7b] transition-colors"
+            >
+              How it works
+            </Link>
+            <Link
+              href="/about"
+              onClick={() => setMobileMenuOpen(false)}
+              className="text-lg font-medium text-[#3b3b3b] hover:text-[#3f8f7b] transition-colors"
+            >
+              About
+            </Link>
+          </div>
+        )}
       </header>
 
       {/* Connect Wallet Modal */}

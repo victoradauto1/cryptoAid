@@ -47,7 +47,7 @@ export default function Home() {
         >
           {/* Left */}
           <div className="md:pl-12 lg:pl-16">
-            <PageTitle className="text-6xl md:text-7xl lg:text-8xl text-[#3b3b3b] leading-none">
+            <PageTitle className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl text-[#3b3b3b] leading-none">
               CryptoAid
             </PageTitle>
 

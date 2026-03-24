@@ -5,10 +5,10 @@ export default function Footer() {
     <footer className="w-full bg-black text-gray-400">
       {/* Upper section */}
       <div className="w-full py-6 flex flex-col items-center">
-        <div className="flex items-center gap-8">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-8 max-w-4xl w-full px-6">
           <p className="text-sm">&copy; {currentYear} CryptoAid</p>
 
-          <nav className="flex gap-6">
+          <nav className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 mt-4 sm:mt-0">
             <a href="/" className="hover:text-white transition">
               Home
             </a>
